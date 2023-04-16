@@ -11,6 +11,7 @@ import java.util.Map;
  * @param <T>
  */
 @Data
+//需要实现序列化接口
 public class R<T> implements Serializable{
 
     private Integer code; //编码：1成功，0和其它数字为失败

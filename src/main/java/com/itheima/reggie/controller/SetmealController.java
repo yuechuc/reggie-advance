@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,14 +48,12 @@ public class SetmealController {
      * @param setmealDto
      * @return
      */
+    @CacheEvict(value = "setmealCache",allEntries = true)
     @PostMapping
     public R<String> save(@RequestBody SetmealDto setmealDto){
         log.info("套餐信息：{}",setmealDto);
 
         setmealService.saveWithDish(setmealDto);
-        //删除redis中的缓存
-        String key = "setmeal_"+setmealDto.getCategoryId()+"_1";
-        redisTemplate.delete(key);
         return R.success("新增套餐成功");
     }
 
@@ -107,17 +107,12 @@ public class SetmealController {
      * @param ids
      * @return
      */
+
+    @CacheEvict(value = "setmealCache",allEntries = true)
     @DeleteMapping
     public R<String> delete(@RequestParam List<Long> ids){
         log.info("ids:{}",ids);
-
         setmealService.removeWithDish(ids);
-        ids.forEach(id->{
-            //删除redis中的缓存
-            String key = "setmeal_"+id+"_1";
-            redisTemplate.delete(key);
-        });
-
         return R.success("套餐数据删除成功");
     }
 
@@ -126,24 +121,26 @@ public class SetmealController {
      * @param setmeal
      * @return
      */
+
+    @Cacheable(value = "setmealCache",key = "#setmeal.categoryId+'_'+#setmeal.status")
     @GetMapping("/list")
     public R<List<Setmeal>> list(Setmeal setmeal){
 
-        String key = "setmeal_"+setmeal.getCategoryId()+"_"+setmeal.getStatus();
+        //String key = "setmeal_"+setmeal.getCategoryId()+"_"+setmeal.getStatus();
 
-        List<Setmeal> list = (List<Setmeal>) redisTemplate.opsForValue().get(key);
-        if (list != null){
-            return R.success(list);
-        }
+        //List<Setmeal> list = (List<Setmeal>) redisTemplate.opsForValue().get(key);
+        //if (list != null){
+        //    return R.success(list);
+        //}
 
         LambdaQueryWrapper<Setmeal> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(setmeal.getCategoryId() != null,Setmeal::getCategoryId,setmeal.getCategoryId());
         queryWrapper.eq(setmeal.getStatus() != null,Setmeal::getStatus,setmeal.getStatus());
         queryWrapper.orderByDesc(Setmeal::getUpdateTime);
 
-        list = setmealService.list(queryWrapper);
+        List<Setmeal> list = setmealService.list(queryWrapper);
 
-        redisTemplate.opsForValue().set(key,list,60, TimeUnit.MINUTES);
+        //redisTemplate.opsForValue().set(key,list,60, TimeUnit.MINUTES);
         return R.success(list);
     }
 }
