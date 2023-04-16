@@ -51,7 +51,9 @@ public class SetmealController {
         log.info("套餐信息：{}",setmealDto);
 
         setmealService.saveWithDish(setmealDto);
-
+        //删除redis中的缓存
+        String key = "setmeal_"+setmealDto.getCategoryId()+"_1";
+        redisTemplate.delete(key);
         return R.success("新增套餐成功");
     }
 
@@ -110,6 +112,11 @@ public class SetmealController {
         log.info("ids:{}",ids);
 
         setmealService.removeWithDish(ids);
+        ids.forEach(id->{
+            //删除redis中的缓存
+            String key = "setmeal_"+id+"_1";
+            redisTemplate.delete(key);
+        });
 
         return R.success("套餐数据删除成功");
     }
